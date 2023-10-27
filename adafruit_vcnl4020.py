@@ -34,7 +34,7 @@ Implementation Notes
 from micropython import const
 from adafruit_bus_device.i2c_device import I2CDevice
 from adafruit_register.i2c_struct import Struct, ROUnaryStruct
-from adafruit_register.i2c_bit import RWBit
+from adafruit_register.i2c_bit import ROBit, RWBit
 from adafruit_register.i2c_bits import RWBits
 
 try:
@@ -68,85 +68,45 @@ _INT_TH_LOW = const(0x02)
 _INT_ALS_READY = const(0x04)
 _INT_PROX_READY = const(0x08)
 
-PROX_RATE_1_95_PER_S = const(0x00)
-PROX_RATE_3_9_PER_S = const(0x01)
-PROX_RATE_7_8_PER_S = const(0x02)
-PROX_RATE_16_6_PER_S = const(0x03)
-PROX_RATE_31_2_PER_S = const(0x04)
-PROX_RATE_62_5_PER_S = const(0x05)
-PROX_RATE_125_PER_S = const(0x06)
-PROX_RATE_250_PER_S = const(0x07)
-
-AMBIENT_RATE_1_SPS = const(0x00)
-AMBIENT_RATE_2_SPS = const(0x01)
-AMBIENT_RATE_3_SPS = const(0x02)
-AMBIENT_RATE_4_SPS = const(0x03)
-AMBIENT_RATE_5_SPS = const(0x04)
-AMBIENT_RATE_6_SPS = const(0x05)
-AMBIENT_RATE_8_SPS = const(0x06)
-AMBIENT_RATE_10_SPS = const(0x07)
-
-AVG_1_SAMPLES = const(0x00)
-AVG_2_SAMPLES = const(0x01)
-AVG_4_SAMPLES = const(0x02)
-AVG_8_SAMPLES = const(0x03)
-AVG_16_SAMPLES = const(0x04)
-AVG_32_SAMPLES = const(0x05)
-AVG_64_SAMPLES = const(0x06)
-AVG_128_SAMPLES = const(0x07)
-
-INT_COUNT_1 = const(0x00)
-INT_COUNT_2 = const(0x01)
-INT_COUNT_4 = const(0x02)
-INT_COUNT_8 = const(0x03)
-INT_COUNT_16 = const(0x04)
-INT_COUNT_32 = const(0x05)
-INT_COUNT_64 = const(0x06)
-INT_COUNT_128 = const(0x07)
-
-PROX_FREQ_390_625_KHZ = const(0x00)
-PROX_FREQ_781_25_KHZ = const(0x01)
-PROX_FREQ_1_5625_MHZ = const(0x02)
-PROX_FREQ_3_125_MHZ = const(0x03)
-
 
 # pylint: disable=too-many-instance-attributes
 class Adafruit_VCNL4020:
     """Adafruit VCNL4020 Proximity/Ambient Light sensor driver"""
 
-    _auto_offset_comp_bit = RWBit(_REG_AMBIENT_PARAM, 3)
+    auto_offset_comp = RWBit(_REG_AMBIENT_PARAM, 3)
+    """Auto offset compensation for ambient light measurement."""
     _command_reg = RWBits(8, _REG_COMMAND, 0)
-    _continuous_conversion_bit = RWBit(_REG_AMBIENT_PARAM, 7)
+    continuous_conversion = RWBit(_REG_AMBIENT_PARAM, 7)
+    """Continuous conversion mode for ambient light measurement."""
     _int_ctrl_reg = RWBits(8, _REG_INT_CTRL, 0)
     _int_status_reg = RWBits(3, _REG_INT_STATUS, 0)
     _led_current = RWBits(6, _REG_IR_LED_CURRENT, 0)
     _product_revision = ROUnaryStruct(_REG_PRODUCT_ID, "<B")
     lux = ROUnaryStruct(_REG_AMBIENT_RESULT_HIGH, ">H")
     """Reads the ambient light/lux sensor (ALS) measurement result"""
-    lux_averaging = RWBits(3, _REG_AMBIENT_PARAM, 0)
-    """Ambient averaging rate"""
+    _lux_averaging = RWBits(3, _REG_AMBIENT_PARAM, 0)
     lux_enabled = RWBit(_REG_COMMAND, 2)
     """Enable/disable lux sensor"""
     lux_on_demand = RWBit(_REG_COMMAND, 4)
     """On-demand setting for lux measurements"""
-    lux_rate = RWBits(3, _REG_AMBIENT_PARAM, 4)
-    """Ambient light measurement rate"""
+    _lux_rate = RWBits(3, _REG_AMBIENT_PARAM, 4)
+    lux_ready = ROBit(_REG_COMMAND, 6)
+    """Status of ambient light data"""
     proximity = ROUnaryStruct(_REG_PROX_RESULT_HIGH, ">H")
     """Reads the proximity measurement result"""
     proximity_enabled = RWBit(_REG_COMMAND, 1)
     """Enable/disable proximity sensor"""
-    proximity_frequency = RWBits(2, _REG_PROX_ADJUST, 3)
-    """Proximity frequency setting"""
+    _proximity_frequency = RWBits(2, _REG_PROX_ADJUST, 3)
     promixity_on_demand = RWBit(_REG_COMMAND, 3)
     """On-demand setting for proximity measurements"""
-    proximity_rate = RWBits(3, _REG_PROX_RATE, 0)
-    """Rate that proximity data is available"""
+    _proximity_rate = RWBits(3, _REG_PROX_RATE, 0)
+    proximity_ready = ROBit(_REG_COMMAND, 5)
+    """Status of proximity data."""
     low_threshold = Struct(_REG_LOW_THRES_HIGH, ">H")
     """Sets the low threshold for proximity measurement"""
     high_threshold = Struct(_REG_HIGH_THRES_HIGH, ">H")
     """Sets the high threshold for proximity measurement."""
-    interrupt_count = RWBits(3, _REG_INT_CTRL, 5)
-    """Interrupt count setting"""
+    _interrupt_count = RWBits(3, _REG_INT_CTRL, 5)
     proximity_interrupt = RWBit(_REG_INT_CTRL, 3)
     """Enable/disable proximity interrupt"""
     lux_interrupt = RWBit(_REG_INT_CTRL, 2)
@@ -157,6 +117,12 @@ class Adafruit_VCNL4020:
     """Enable/disable proximity low threshold interrupt"""
     selftimed_enabled = RWBit(_REG_COMMAND, 0)
     """Enable/disable selftimed reading"""
+
+    _proximity_rates = [1.95, 3.9, 7.8, 16.6, 31.2, 62.5, 125, 250]
+    _lux_rates = [1, 2, 3, 4, 5, 6, 8, 10]
+    _avg_samples = [1, 2, 4, 8, 16, 32, 64, 128]
+    _int_counts = [1, 2, 4, 8, 16, 32, 64, 128]
+    _proximity_frequencies = [390.625, 781.25, 1.5625, 3.125]
 
     def __init__(self, i2c: I2C, addr: int = _I2C_ADDRESS) -> None:
         """
@@ -170,52 +136,23 @@ class Adafruit_VCNL4020:
         if self._product_revision != 0x21:
             raise RuntimeError(f"Invalid Product ID Revision {self._product_revision}")
         try:
-            # Disable to setup configuration
-            self.lux_enabled = False
-            self.proximity_enabled = False
-            self.selftimed_enabled = False
             # Configuration settings
-            self.proximity_rate = PROX_RATE_250_PER_S
+            self.proximity_rate = 250
             self.led_current = 200
-            self.lux_rate = AMBIENT_RATE_10_SPS
-            self.lux_averaging = AVG_1_SAMPLES
-            # Reenable to activate configuration
-            self.lux_enabled = True
-            self.proximity_enabled = True
-            self.selftimed_enabled = True
+            self.lux_rate = 10
+            self.lux_averaging = 1
         except Exception as error:
             raise RuntimeError(f"Failed to initialize: {error}") from error
 
     @property
-    def lux_ready(self) -> int:
-        """
-        Status of ambient light data.
+    def _enable(self) -> bool:
+        return self.lux_enabled, self.proximity_enabled, self.selftimed_enabled
 
-        :return: True if ALS data is ready, otherwise false.
-        """
-        return (self._command_reg >> 6) & 0x01
-
-    @property
-    def proximity_ready(self) -> int:
-        """
-        Status of proximity data.
-
-        :return: True if proximity data is ready, otherwise false.
-        """
-        return (self._command_reg >> 5) & 0x01
-
-    @property
-    def led_current(self) -> int:
-        """
-        The LED current for proximity mode in mA.
-
-        :return: The LED current in mA.
-        """
-        return self._led_current * 10
-
-    @led_current.setter
-    def led_current(self, value: int) -> None:
-        self._led_current = value // 10
+    @_enable.setter
+    def _enable(self, value: bool) -> None:
+        self.lux_enabled = value
+        self.proximity_enabled = value
+        self.selftimed_enabled = value
 
     @property
     def clear_interrupts(self) -> None:
@@ -232,27 +169,116 @@ class Adafruit_VCNL4020:
         self._int_status_reg |= clear_bits
 
     @property
-    def auto_offset_comp(self) -> bool:
+    def interrupt_count(self) -> int:
         """
-        Auto offset compensation for ambient light measurement.
+        Interrupt count setting
 
-        :return: True if enabled, False if disabled.
+        :rtype: int
         """
-        return bool(self._auto_offset_comp_bit)
+        return self._int_counts[self._interrupt_count]
 
-    @auto_offset_comp.setter
-    def auto_offset_comp(self, enable: bool) -> None:
-        self._auto_offset_comp_bit = enable
+    @interrupt_count.setter
+    def interrupt_count(self, value: int) -> None:
+        self._enable = False
+        if value not in self._int_counts:
+            raise ValueError(
+                f"Invalid interrupt count: {value}. Available counts: {self._int_counts}"
+            )
+        count = self._int_counts.index(value)
+        self._interrupt_count = count
+        self._enable = True
 
     @property
-    def continuous_conversion(self) -> bool:
+    def led_current(self) -> int:
         """
-        Continuous conversion mode for ambient light measurement.
+        The LED current for proximity mode in mA.
 
-        :return: True if enabled, False if disabled.
+        :return: The LED current in mA.
         """
-        return bool(self._continuous_conversion_bit)
+        return self._led_current * 10
 
-    @continuous_conversion.setter
-    def continuous_conversion(self, enable: bool) -> None:
-        self._continuous_conversion_bit = enable
+    @led_current.setter
+    def led_current(self, value: int) -> None:
+        self._enable = False
+        self._led_current = value // 10
+        self._enable = True
+
+    @property
+    def lux_averaging(self) -> int:
+        """
+        Ambient averaging sample rate
+
+        :rtype: int
+        """
+        return self._avg_samples[self._lux_averaging]
+
+    @lux_averaging.setter
+    def lux_averaging(self, value: int) -> None:
+        self._enable = False
+        if value not in self._avg_samples:
+            raise ValueError(
+                f"Invalid sample rate: {value}. Available sample rates: {self._avg_samples}"
+            )
+        sample_rate = self._avg_samples.index(value)
+        self._lux_averaging = sample_rate
+        self._enable = True
+
+    @property
+    def lux_rate(self) -> int:
+        """
+        Ambient light measurement rate
+
+        :rtype: int
+        """
+        return self._lux_rates[self._lux_rate]
+
+    @lux_rate.setter
+    def lux_rate(self, value: int) -> None:
+        self._enable = False
+        if value not in self._lux_rates:
+            raise ValueError(
+                f"Invalid ambient rate: {value}. Available rates: {self._lux_rates}"
+            )
+        rate = self._lux_rates.index(value)
+        self._lux_rate = rate
+        self._enable = True
+
+    @property
+    def proximity_frequency(self) -> int:
+        """
+        Proximity frequency setting
+
+        :rtype: int
+        """
+        return self._proximity_frequencies[self._proximity_frequency]
+
+    @proximity_frequency.setter
+    def proximity_frequency(self, value: int) -> None:
+        self._enable = False
+        if value not in self._proximity_frequencies:
+            raise ValueError(
+                f"Invalid frequency: {value}. Available frequencies: {self._proximity_frequencies}"
+            )
+        freq = self._proximity_frequencies.index(value)
+        self._proximity_frequency = freq
+        self._enable = True
+
+    @property
+    def proximity_rate(self) -> int:
+        """
+        Proximity measurement rate
+
+        :rtype: int
+        """
+        return self._proximity_rates[self._proximity_rate]
+
+    @proximity_rate.setter
+    def proximity_rate(self, value: int) -> None:
+        self._enable = False
+        if value not in self._proximity_rates:
+            raise ValueError(
+                f"Invalid proximity rate: {value}. Available rates: {self._proximity_rates}"
+            )
+        rate = self._proximity_rates.index(value)
+        self._proximity_rate = rate
+        self._enable = True
